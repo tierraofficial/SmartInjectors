@@ -25,6 +25,24 @@ namespace SmartInjectors
         private GUIStyle buttonStyle;
         private GUIStyle labelStyle;
         private bool stylesInitialized = false;
+        
+        // 一键注射功能
+        private bool showQuickInjectPrompt = false;     // 是否显示"即将全部注射..."提示
+        private float promptShowTime = 0f;              // 提示显示的开始时间
+        private const float PROMPT_DURATION = 5f;       // 提示持续5秒
+        
+        private bool showInjectionResult = false;       // 是否显示注射结果
+        private string injectionResultText = "";        // 注射结果文本
+        private float resultShowTime = 0f;              // 结果显示的开始时间
+        private const float RESULT_DURATION = 3f;       // 结果持续3秒
+        
+        private bool showCooldownWarning = false;       // 是否显示CD警告
+        private string cooldownWarningText = "";        // CD警告文本
+        private float cooldownWarningTime = 0f;         // CD警告显示时间
+        private const float COOLDOWN_WARNING_DURATION = 1.5f;  // CD警告持续1.5秒
+        
+        private float lastQuickInjectTime = -999f;      // 上次一键注射的时间
+        private const float QUICK_INJECT_COOLDOWN = 60f; // 一键注射CD为60秒
 
         /// <summary>
         /// 显示针剂选择UI
@@ -86,6 +104,9 @@ namespace SmartInjectors
         /// </summary>
         public void DrawGUI()
         {
+            // 绘制一键注射的提示文字（不受UI显示状态限制）
+            DrawQuickInjectPrompts();
+            
             if (!isVisible || currentInjectionCase == null)
                 return;
 
@@ -101,6 +122,79 @@ namespace SmartInjectors
 
             // 绘制窗口
             windowRect = GUI.Window(12345, windowRect, DrawWindow, "注射器收纳包", windowStyle);
+        }
+        
+        /// <summary>
+        /// 绘制一键注射的各种提示文字
+        /// </summary>
+        private void DrawQuickInjectPrompts()
+        {
+            // 文字样式（居中显示在屏幕中央）
+            GUIStyle centerStyle = new GUIStyle(GUI.skin.label);
+            centerStyle.alignment = TextAnchor.MiddleCenter;
+            centerStyle.fontSize = 24;
+            centerStyle.fontStyle = FontStyle.Bold;
+            centerStyle.normal.textColor = Color.white;
+            
+            // 添加文字阴影效果
+            GUIStyle shadowStyle = new GUIStyle(centerStyle);
+            shadowStyle.normal.textColor = Color.black;
+            
+            // 1. "即将全部注射..."提示
+            if (showQuickInjectPrompt)
+            {
+                float centerX = Screen.width / 2f;
+                float centerY = Screen.height / 2f;
+                string text = "即将全部注射...";
+                
+                // 绘制阴影
+                GUI.Label(new Rect(centerX - 198, centerY - 48, 400, 100), text, shadowStyle);
+                // 绘制文字
+                GUI.Label(new Rect(centerX - 200, centerY - 50, 400, 100), text, centerStyle);
+            }
+            
+            // 2. 注射结果提示
+            if (showInjectionResult)
+            {
+                float centerX = Screen.width / 2f;
+                float centerY = Screen.height / 2f;
+                
+                // 多行文字样式
+                GUIStyle resultStyle = new GUIStyle(GUI.skin.label);
+                resultStyle.alignment = TextAnchor.MiddleCenter;
+                resultStyle.fontSize = 20;
+                resultStyle.fontStyle = FontStyle.Bold;
+                resultStyle.normal.textColor = Color.green;
+                
+                GUIStyle resultShadowStyle = new GUIStyle(resultStyle);
+                resultShadowStyle.normal.textColor = Color.black;
+                
+                // 绘制阴影
+                GUI.Label(new Rect(centerX - 298, centerY - 98, 600, 200), injectionResultText, resultShadowStyle);
+                // 绘制文字
+                GUI.Label(new Rect(centerX - 300, centerY - 100, 600, 200), injectionResultText, resultStyle);
+            }
+            
+            // 3. CD警告
+            if (showCooldownWarning)
+            {
+                float centerX = Screen.width / 2f;
+                float centerY = Screen.height / 2f;
+                
+                GUIStyle warningStyle = new GUIStyle(GUI.skin.label);
+                warningStyle.alignment = TextAnchor.MiddleCenter;
+                warningStyle.fontSize = 22;
+                warningStyle.fontStyle = FontStyle.Bold;
+                warningStyle.normal.textColor = Color.red;
+                
+                GUIStyle warningShadowStyle = new GUIStyle(warningStyle);
+                warningShadowStyle.normal.textColor = Color.black;
+                
+                // 绘制阴影
+                GUI.Label(new Rect(centerX - 248, centerY - 48, 500, 100), cooldownWarningText, warningShadowStyle);
+                // 绘制文字
+                GUI.Label(new Rect(centerX - 250, centerY - 50, 500, 100), cooldownWarningText, warningStyle);
+            }
         }
 
         private void InitializeStyles()
@@ -293,8 +387,17 @@ namespace SmartInjectors
         /// </summary>
         public void HandleInput()
         {
+            // 更新提示和结果的显示时间
+            UpdatePromptAndResults();
+            
             if (!isVisible)
                 return;
+
+            // 检测`·`键（数字1左边的波浪号键）
+            if (Input.GetKeyDown(KeyCode.BackQuote))
+            {
+                HandleQuickInjectKey();
+            }
 
             // 鼠标右键关闭UI (使用Mouse1代替ESC，避免与游戏暂停冲突)
             if (Input.GetMouseButtonDown(1)) // 1 = 鼠标右键
@@ -376,6 +479,231 @@ namespace SmartInjectors
 
             Debug.Log($"{LOG_PREFIX} 准备使用槽位 {slotIndex + 1} 的针剂: {slot.Content.DisplayName}");
             UseSyringe(slot.Content);
+        }
+        
+        // ==================== 一键注射功能 ====================
+        
+        /// <summary>
+        /// 更新提示和结果的显示状态
+        /// </summary>
+        private void UpdatePromptAndResults()
+        {
+            // 更新"即将全部注射..."提示
+            if (showQuickInjectPrompt)
+            {
+                if (Time.time - promptShowTime > PROMPT_DURATION)
+                {
+                    showQuickInjectPrompt = false;
+                    Debug.Log($"{LOG_PREFIX} 一键注射提示超时消失");
+                }
+            }
+            
+            // 更新注射结果提示
+            if (showInjectionResult)
+            {
+                if (Time.time - resultShowTime > RESULT_DURATION)
+                {
+                    showInjectionResult = false;
+                }
+            }
+            
+            // 更新CD警告
+            if (showCooldownWarning)
+            {
+                if (Time.time - cooldownWarningTime > COOLDOWN_WARNING_DURATION)
+                {
+                    showCooldownWarning = false;
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 处理`·`键按下
+        /// </summary>
+        private void HandleQuickInjectKey()
+        {
+            // 检查是否在CD中
+            float timeSinceLastInject = Time.time - lastQuickInjectTime;
+            float remainingCooldown = QUICK_INJECT_COOLDOWN - timeSinceLastInject;
+            
+            if (remainingCooldown > 0f)
+            {
+                // 在CD中，显示警告
+                ShowCooldownWarning(remainingCooldown);
+                return;
+            }
+            
+            // 第一次按下：显示提示
+            if (!showQuickInjectPrompt)
+            {
+                showQuickInjectPrompt = true;
+                promptShowTime = Time.time;
+                Debug.Log($"{LOG_PREFIX} 显示一键注射提示");
+                return;
+            }
+            
+            // 第二次按下：执行一键注射
+            showQuickInjectPrompt = false;
+            ExecuteQuickInject();
+        }
+        
+        /// <summary>
+        /// 显示CD警告
+        /// </summary>
+        private void ShowCooldownWarning(float remainingSeconds)
+        {
+            showCooldownWarning = true;
+            cooldownWarningTime = Time.time;
+            cooldownWarningText = $"一键注射冷却中！还有 {Mathf.CeilToInt(remainingSeconds)} 秒";
+            Debug.Log($"{LOG_PREFIX} {cooldownWarningText}");
+        }
+        
+        /// <summary>
+        /// 执行智能一键注射
+        /// 简化版本：按TypeID去重，每种针剂只使用一次
+        /// </summary>
+        private void ExecuteQuickInject()
+        {
+            CharacterMainControl character = CharacterMainControl.Main;
+            if (character == null)
+            {
+                Debug.LogError($"{LOG_PREFIX} 无法获取主角色引用");
+                return;
+            }
+            
+            if (currentInjectionCase == null || currentInjectionCase.Slots == null)
+            {
+                Debug.LogError($"{LOG_PREFIX} 收纳包无效");
+                return;
+            }
+            
+            Debug.Log($"{LOG_PREFIX} ========== 开始执行一键注射 ==========");
+            
+            // TypeID去重
+            System.Collections.Generic.HashSet<int> usedTypeIDs = new System.Collections.Generic.HashSet<int>();
+            System.Collections.Generic.List<string> injectedNames = new System.Collections.Generic.List<string>();
+            
+            // 遍历6个槽位
+            for (int i = 0; i < 6; i++)
+            {
+                if (i >= currentInjectionCase.Slots.Count)
+                    break;
+                    
+                var slot = currentInjectionCase.Slots.GetSlotByIndex(i);
+                if (slot == null || slot.Content == null)
+                {
+                    Debug.Log($"{LOG_PREFIX} 槽位 {i + 1} 为空");
+                    continue;
+                }
+                
+                Item syringe = slot.Content;
+                
+                Debug.Log($"{LOG_PREFIX} 检查槽位 {i + 1}: {syringe.DisplayName} (TypeID: {syringe.TypeID})");
+                
+                // ⭐ 修改判断逻辑：不再使用IsSyringe()，而是检查UsageUtilities
+                // 如果物品有UsageUtilities组件且可以使用，就认为它是可注射的
+                if (syringe.UsageUtilities == null)
+                {
+                    Debug.Log($"{LOG_PREFIX} 跳过 {syringe.DisplayName} (TypeID: {syringe.TypeID}) - 没有UsageUtilities");
+                    continue;
+                }
+                
+                // TypeID去重
+                if (usedTypeIDs.Contains(syringe.TypeID))
+                {
+                    Debug.Log($"{LOG_PREFIX} 跳过 {syringe.DisplayName} (TypeID: {syringe.TypeID}) - TypeID重复");
+                    continue;
+                }
+                
+                // 尝试注射
+                Debug.Log($"{LOG_PREFIX} 尝试注射: {syringe.DisplayName} (TypeID: {syringe.TypeID})");
+                if (TryInjectSyringe(character, syringe))
+                {
+                    usedTypeIDs.Add(syringe.TypeID);
+                    injectedNames.Add(syringe.DisplayName);
+                }
+            }
+            
+            // 显示结果
+            if (injectedNames.Count > 0)
+            {
+                ShowInjectionResult(injectedNames);
+                lastQuickInjectTime = Time.time;
+                Debug.Log($"{LOG_PREFIX} 一键注射完成，共注射 {injectedNames.Count} 种针剂");
+            }
+            else
+            {
+                Debug.Log($"{LOG_PREFIX} 没有可用的针剂");
+            }
+        }
+        
+        /// <summary>
+        /// 尝试注射一支针剂
+        /// </summary>
+        private bool TryInjectSyringe(CharacterMainControl character, Item syringe)
+        {
+            try
+            {
+                // 检查是否可用
+                if (!syringe.UsageUtilities.IsUsable(syringe, character))
+                {
+                    Debug.LogWarning($"{LOG_PREFIX} {syringe.DisplayName} 当前不可用");
+                    return false;
+                }
+                
+                // 直接调用UsageUtilities.Use方法，它会调用所有behaviors（包括Drug等）
+                syringe.UsageUtilities.Use(syringe, character);
+                
+                // ===== 测试模式：暂时禁用针剂消耗 =====
+                // 测试完成后取消下面的注释，恢复正常消耗逻辑
+                /*
+                // 减少针剂数量
+                if (syringe.Stackable && syringe.StackCount > 1)
+                {
+                    syringe.StackCount--;
+                }
+                else
+                {
+                    // 找到并移除针剂（调用Unplug方法）
+                    for (int i = 0; i < currentInjectionCase.Slots.Count; i++)
+                    {
+                        var slot = currentInjectionCase.Slots.GetSlotByIndex(i);
+                        if (slot != null && slot.Content == syringe)
+                        {
+                            slot.Unplug();
+                            break;
+                        }
+                    }
+                }
+                */
+                
+                Debug.Log($"{LOG_PREFIX} 成功注射: {syringe.DisplayName} (测试模式：未消耗)");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"{LOG_PREFIX} 注射 {syringe.DisplayName} 时出错: {ex.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// 显示注射结果
+        /// </summary>
+        private void ShowInjectionResult(System.Collections.Generic.List<string> injectedNames)
+        {
+            showInjectionResult = true;
+            resultShowTime = Time.time;
+            
+            // 构建结果文本
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            sb.AppendLine("已注射:");
+            foreach (string name in injectedNames)
+            {
+                sb.AppendLine($"• {name}");
+            }
+            
+            injectionResultText = sb.ToString();
         }
 
         /// <summary>
