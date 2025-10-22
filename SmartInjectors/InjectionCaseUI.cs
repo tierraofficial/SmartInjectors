@@ -136,9 +136,15 @@ namespace SmartInjectors
             centerStyle.fontStyle = FontStyle.Bold;
             centerStyle.normal.textColor = Color.white;
             
-            // 添加文字阴影效果
+            // 使用系统默认字体（如果可用）
+            if (GUI.skin != null && GUI.skin.font != null)
+            {
+                centerStyle.font = GUI.skin.font;
+            }
+            
+            // 添加文字阴影效果（半透明黑色，偏移更自然）
             GUIStyle shadowStyle = new GUIStyle(centerStyle);
-            shadowStyle.normal.textColor = Color.black;
+            shadowStyle.normal.textColor = new Color(0, 0, 0, 0.8f);
             
             // 1. "即将全部注射..."提示
             if (showQuickInjectPrompt)
@@ -166,8 +172,14 @@ namespace SmartInjectors
                 resultStyle.fontStyle = FontStyle.Bold;
                 resultStyle.normal.textColor = Color.green;
                 
+                // 使用系统默认字体
+                if (GUI.skin != null && GUI.skin.font != null)
+                {
+                    resultStyle.font = GUI.skin.font;
+                }
+                
                 GUIStyle resultShadowStyle = new GUIStyle(resultStyle);
-                resultShadowStyle.normal.textColor = Color.black;
+                resultShadowStyle.normal.textColor = new Color(0, 0, 0, 0.8f);
                 
                 // 绘制阴影
                 GUI.Label(new Rect(centerX - 298, centerY - 98, 600, 200), injectionResultText, resultShadowStyle);
@@ -187,8 +199,14 @@ namespace SmartInjectors
                 warningStyle.fontStyle = FontStyle.Bold;
                 warningStyle.normal.textColor = Color.red;
                 
+                // 使用系统默认字体
+                if (GUI.skin != null && GUI.skin.font != null)
+                {
+                    warningStyle.font = GUI.skin.font;
+                }
+                
                 GUIStyle warningShadowStyle = new GUIStyle(warningStyle);
-                warningShadowStyle.normal.textColor = Color.black;
+                warningShadowStyle.normal.textColor = new Color(0, 0, 0, 0.8f);
                 
                 // 绘制阴影
                 GUI.Label(new Rect(centerX - 248, centerY - 48, 500, 100), cooldownWarningText, warningShadowStyle);
@@ -654,9 +672,6 @@ namespace SmartInjectors
                 // 直接调用UsageUtilities.Use方法，它会调用所有behaviors（包括Drug等）
                 syringe.UsageUtilities.Use(syringe, character);
                 
-                // ===== 测试模式：暂时禁用针剂消耗 =====
-                // 测试完成后取消下面的注释，恢复正常消耗逻辑
-                /*
                 // 减少针剂数量
                 if (syringe.Stackable && syringe.StackCount > 1)
                 {
@@ -675,9 +690,8 @@ namespace SmartInjectors
                         }
                     }
                 }
-                */
                 
-                Debug.Log($"{LOG_PREFIX} 成功注射: {syringe.DisplayName} (测试模式：未消耗)");
+                Debug.Log($"{LOG_PREFIX} 成功注射: {syringe.DisplayName}");
                 return true;
             }
             catch (System.Exception ex)
