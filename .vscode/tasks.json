@@ -1,0 +1,68 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/SmartInjectors/SmartInjectors.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "build-release",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/SmartInjectors/SmartInjectors.csproj",
+                "-c",
+                "Release",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": "build"
+        },
+        {
+            "label": "copy-dll",
+            "command": "powershell",
+            "type": "shell",
+            "args": [
+                "-Command",
+                "Copy-Item ${workspaceFolder}/SmartInjectors/bin/Release/netstandard2.1/SmartInjectors.dll ${workspaceFolder}/ReleaseExample/SmartInjectors/ -Force"
+            ],
+            "problemMatcher": [],
+            "dependsOn": "build-release"
+        },
+        {
+            "label": "install-to-game",
+            "command": "powershell",
+            "type": "shell",
+            "args": [
+                "-Command",
+                "Copy-Item -Recurse ${workspaceFolder}/ReleaseExample/SmartInjectors 'E:\\SteamLibrary\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\' -Force"
+            ],
+            "problemMatcher": [],
+            "dependsOn": "copy-dll"
+        },
+        {
+            "label": "build-and-install",
+            "dependsOn": [
+                "build-release",
+                "copy-dll",
+                "install-to-game"
+            ],
+            "problemMatcher": [],
+            "group": "build"
+        }
+    ]
+}

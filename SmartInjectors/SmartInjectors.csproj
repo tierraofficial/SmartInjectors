@@ -1,0 +1,61 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <!-- Duckov 游戏路径配置 -->
+    <DuckovGamePath>E:\SteamLibrary\steamapps\common\Escape from Duckov</DuckovGamePath>
+    <DuckovManagedPath>$(DuckovGamePath)\Duckov_Data\Managed</DuckovManagedPath>
+    <DuckovModsPath>$(DuckovGamePath)\Duckov_Data\Mods</DuckovModsPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 引用 Duckov 游戏的 DLL 文件 -->
+    <Reference Include="$(DuckovManagedPath)\TeamSoda.*.dll">
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="$(DuckovManagedPath)\ItemStatsSystem.dll">
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="$(DuckovManagedPath)\Unity*.dll">
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="$(DuckovManagedPath)\UnityEngine.*.dll">
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- 编译后自动部署到游戏 Mods 文件夹 -->
+  <Target Name="PostBuildDeploy" AfterTargets="PostBuildEvent">
+    <PropertyGroup>
+      <ReleaseFolder>$(ProjectDir)..\ReleaseExample\SmartInjectors</ReleaseFolder>
+      <ModTargetPath>$(DuckovModsPath)\SmartInjectors</ModTargetPath>
+    </PropertyGroup>
+    
+    <Message Text="==========================================" Importance="high" />
+    <Message Text="开始部署 SmartInjectors Mod..." Importance="high" />
+    <Message Text="==========================================" Importance="high" />
+    
+    <!-- 步骤 1: 复制 DLL 到 ReleaseExample 文件夹 -->
+    <Message Text="1. 复制 DLL 到发布文件夹..." Importance="high" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ReleaseFolder)" />
+    <Message Text="   ✓ $(TargetFileName) -> $(ReleaseFolder)" Importance="high" />
+    
+    <!-- 步骤 2: 创建游戏 Mods 目标文件夹(如果不存在) -->
+    <MakeDir Directories="$(ModTargetPath)" Condition="!Exists('$(ModTargetPath)')" />
+    
+    <!-- 步骤 3: 复制整个 Mod 文件夹到游戏目录 -->
+    <Message Text="2. 部署 Mod 到游戏目录..." Importance="high" />
+    <ItemGroup>
+      <ModFiles Include="$(ReleaseFolder)\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ModFiles)" DestinationFiles="@(ModFiles->'$(ModTargetPath)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Message Text="   ✓ Mod 已部署到: $(ModTargetPath)" Importance="high" />
+    
+    <Message Text="==========================================" Importance="high" />
+    <Message Text="✓ SmartInjectors Mod 部署完成!" Importance="high" />
+    <Message Text="现在可以启动游戏进行测试了!" Importance="high" />
+    <Message Text="==========================================" Importance="high" />
+  </Target>
+
+</Project>
