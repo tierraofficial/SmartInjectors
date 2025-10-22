@@ -17,8 +17,8 @@ namespace SmartInjectors
         private Item currentInjectionCase = null;
         // 横向布局，位置在快捷栏上方并向右偏移 (避免遮挡左侧UI元素)
         // X轴: Screen.width / 2 - 100 (向右偏移300像素)
-        // Y轴: Screen.height - 300 (距离底部300像素，往上移动)
-        private Rect windowRect = new Rect(Screen.width / 2 - 100, Screen.height - 300, 800, 170);
+        // Y轴: Screen.height - 350 (距离底部350像素，继续往上移动)
+        private Rect windowRect = new Rect(Screen.width / 2 - 100, Screen.height - 350, 800, 170);
         
         // UI样式
         private GUIStyle windowStyle;
